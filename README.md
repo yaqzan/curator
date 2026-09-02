@@ -1,54 +1,52 @@
 # Curator
 
-Ranks what I've watched. Films, TV, anime, and documentaries each get their own
-comparison contest, ordered six titles at a time instead of rated with stars.
+![A six-way ranking round in progress](docs/screenshot.webp)
+
+Curator ranks everything I've watched. Films, TV, anime, and documentaries each run in
+their own contest, and the only question it ever asks is: order these six, ties
+allowed.
 
 Live: https://curator.yaqzan.dev
 
-## Why I built it
+## Why six at a time
 
-Star ratings drift. I'd give three films an 8 over a few years and lose track of which
-one I actually preferred more, and recalibrating a 1-10 scale in my head is harder than
-just answering "which of these did I like better." Curator only ever asks one thing:
-order six titles, ties allowed, and it works your rating out from your answers.
+Star ratings drift. I'd give three films an 8 a year apart and have no real memory of
+which one I actually preferred, and recalibrating a 1-10 scale in my head is harder than
+just answering which of six I liked better. So Curator never asks for a number. It shows
+six titles, I put them in order, ties are fine, and a score comes out the other end.
 
-## How it works
+The reason it's six and not two is Fisher information. A single head-to-head duel at
+equal scores carries 0.50 bits of information about the underlying ranking; ordering six
+items at once carries 3.55, a 7.1x gain. Worked through to rounds needed for the same
+confidence, that's roughly 110 rounds of ordering six versus about 700 pairwise duels to
+reach the same accuracy. The comparisons themselves aren't scored as C(n,2) independent
+duels either, since doing that inflates a single judgement 1.5x to 2.7x depending on how
+many titles were in the round and quietly breaks the uncertainty estimate the whole
+calibration gate depends on. A round is stored and scored as one ranking, decomposed
+with a Plackett-Luce likelihood.
 
-- Titles come from Plex's own watch ledger, read directly out of its SQLite database
-  rather than the HTTP API, because the ledger is keyed by a global GUID and survives
-  the library being removed. This machine's Plex reports zero library sections after a
-  migration, but all 107 watch rows are still intact.
-- Every media type is a separate contest sharing one 800-1200 scoring scale via
-  `media_types.py`, the single place a contest's label or key is written down.
-- `scorer.py` is a batch Bradley-Terry and Plackett-Luce MAP fit run over the whole
-  comparison history and refit after every round, giving order-independence and a real
-  posterior uncertainty per title instead of an online Elo that drifts with judging
-  order.
-- `catalog.py` enforces that a re-import from Plex or my Obsidian vault fills in blanks
-  but never overwrites a tier I set by hand.
-- Radarr and Sonarr, if running, add an "on disk" badge to library cards. If they
-  aren't, nothing about the app changes.
+Every rating comes out of a batch Bradley-Terry / Plackett-Luce fit run over the entire
+comparison history, refit after every round rather than nudged with online Elo. That
+gives order-independence and a real posterior standard deviation per title, which is
+what decides whether a title needs more rounds before its tier is trustworthy. The
+scorer is a straight port of a face-ranking system I'd already built and validated for a
+much larger personal project, carried over rather than re-derived.
+
+## Reading Plex's own ledger
+
+Watch history comes from Plex's SQLite database directly, not its HTTP API. The ledger
+table is keyed by a global GUID that survives a library being deleted or moved, where
+the API's answer depends on the library still existing. That distinction wasn't
+theoretical: after a full migration to this machine, Plex reported zero library sections
+for a while, and all 107 watch rows in the ledger were still intact and importable.
+Tiers, separately, come from a media log I keep in Obsidian, since Plex never had my
+actual ratings to begin with. Importing from either source fills in blanks but never
+overwrites a tier I set by hand, the same human-edits-win rule I use in a much larger
+cataloguing pipeline elsewhere. Radarr and Sonarr, when they're running, add an "on
+disk" badge to a card; when they're not, nothing else about the app changes.
 
 `.claude/` holds the guidance I give Claude Code when it works in this repo. I develop
 with agents heavily, and the docs there are the project's memory.
-
-## What I think is interesting
-
-- The six-at-a-time interaction is there for the math: ordering six items carries 7.1 times the Fisher information of a single
-  head-to-head duel (3.55 versus 0.50), meaning roughly 110 rounds reach the same
-  accuracy as 700 pairwise comparisons.
-- The watch history is read straight from Plex's SQLite ledger instead of its API,
-  specifically because the ledger survives a library being deleted or moved. All 107
-  watch rows on this machine outlived a full library migration that zeroed out every
-  Plex section.
-- `scorer.py` is a port of a face-ranking scorer I built for a different project,
-  carrying forward an already-validated batch-fit design instead of re-deriving the math
-  from scratch.
-- Importing never overwrites a judgement. A re-import from Plex or Obsidian fills blank
-  fields but a hand-set tier always wins, the same rule I use in a much larger ingestion
-  pipeline elsewhere.
-- The Plex token is read from an environment variable or the Windows registry key Plex
-  itself writes. Zero secrets on disk, by design.
 
 ## Running it
 
@@ -73,13 +71,13 @@ isn't running.
 ```
 curator/
   media_types.py    the contest registry, the only place a type key is written
-  scorer.py          the batch Bradley-Terry / Plackett-Luce fit
-  ranking.py          history, refit, undo, purge, the audit pool
-  catalog.py          adding titles; imports never overwrite a hand-set judgement
-  sources/            Plex watch ledger, Plex metadata + search, Radarr/Sonarr badge
-frontend/            Vite + React + TypeScript
-ops/                  cloudflared tunnel config
-tests/                63 tests; no database or network needed
+  scorer.py         the batch Bradley-Terry / Plackett-Luce fit
+  ranking.py        history, refit, undo, purge, the audit pool
+  catalog.py        adding titles; imports never overwrite a hand-set judgement
+  sources/          Plex watch ledger, Plex metadata + search, Radarr/Sonarr badge
+frontend/           Vite + React + TypeScript
+ops/                cloudflared tunnel config
+tests/               63 tests; no database or network needed
 ```
 
 ## Status
