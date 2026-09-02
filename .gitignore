@@ -1,0 +1,20 @@
+# Local state — the database, the metadata cache and purge backups.
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Frontend
+node_modules/
+frontend/dist/
+*.local
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
