@@ -34,23 +34,21 @@ with agents heavily, and the docs there are the project's memory.
 
 ## What I think is interesting
 
-- The core interaction has a real information-theoretic argument behind it, not just a
-  UX preference: ordering six items carries 7.1 times the Fisher information of a single
+- The six-at-a-time interaction is there for the math: ordering six items carries 7.1 times the Fisher information of a single
   head-to-head duel (3.55 versus 0.50), meaning roughly 110 rounds reach the same
   accuracy as 700 pairwise comparisons.
 - The watch history is read straight from Plex's SQLite ledger instead of its API,
   specifically because the ledger survives a library being deleted or moved. All 107
   watch rows on this machine outlived a full library migration that zeroed out every
-  Plex section (`curator/sources/plex_watch.py`).
-- `scorer.py` is an explicit, documented port of a face-ranking scorer I built for a
-  different project, carrying forward an already-validated batch-fit design instead of
-  re-deriving the math from scratch.
+  Plex section.
+- `scorer.py` is a port of a face-ranking scorer I built for a different project,
+  carrying forward an already-validated batch-fit design instead of re-deriving the math
+  from scratch.
 - Importing never overwrites a judgement. A re-import from Plex or Obsidian fills blank
-  fields but a hand-set tier always wins, mirroring the same rule I use in a much larger
-  ingestion pipeline elsewhere (`curator/catalog.py`).
-- `curator/config.py` opens with a comment stating it holds no secrets, then reads the
-  Plex token from an environment variable or the Windows registry key Plex itself
-  writes. Zero secrets on disk by design, not by omission.
+  fields but a hand-set tier always wins, the same rule I use in a much larger ingestion
+  pipeline elsewhere.
+- The Plex token is read from an environment variable or the Windows registry key Plex
+  itself writes. Zero secrets on disk, by design.
 
 ## Running it
 
